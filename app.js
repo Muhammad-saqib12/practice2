@@ -20,29 +20,37 @@ mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB Connected Successfully"))
   .catch((err) => console.error("❌ MongoDB Connection Error:", err));
 
-// CORS configuration for both local development and Vercel production
+
+// app.use(cors({ origin: "http://localhost:5173", credentials: true }));
 const allowedOrigins = [
-  "http://localhost:5173", // Local development
-  "http://localhost:3000", // Alternative local port
-  process.env.FRONTEND_URL, // Your Vercel app URL
+  "http://localhost:3000",         // local dev
+  "https://my-react-app-psi-pink.vercel.app", // production frontend
 ];
 
-app.use(cors({ 
+app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
+    console.log("🔍 CORS request from origin:", origin);
+    console.log("📋 Allowed origins:", allowedOrigins);
     
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      console.log('CORS blocked origin:', origin);
-      callback(new Error('Not allowed by CORS'));
+    // allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) {
+      console.log("✅ Allowing request with no origin (likely server-to-server)");
+      return callback(null, true);
     }
+    
+    if (allowedOrigins.indexOf(origin) === -1) {
+      console.log("❌ CORS blocked origin:", origin);
+      console.log("📋 Allowed origins:", allowedOrigins);
+      return callback(new Error("Not allowed by CORS"), false);
+    }
+    
+    console.log("✅ Origin allowed:", origin);
+    return callback(null, true);
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
 }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -57,6 +65,17 @@ app.use("/product",productRouter)
 
 app.get("/", function (req, res) {
   res.send("raja palo khan");
+});
+
+// CORS test endpoint
+app.get("/cors-test", function (req, res) {
+  res.json({ 
+    message: "CORS is working!", 
+    origin: req.headers.origin,
+    userAgent: req.headers['user-agent'],
+    timestamp: new Date().toISOString(),
+    allowedOrigins: allowedOrigins
+  });
 });
 
 // ✅ Show which port and DB are being used
